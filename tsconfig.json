@@ -1,6 +1,8 @@
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
     "strict": true,
     "paths": {
       "@/*": [
@@ -13,5 +15,5 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
-  ]
+, "firbase.js"  ]
 }
