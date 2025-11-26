@@ -15,7 +15,6 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
-
 import {
   addDoc,
   auth,
@@ -34,10 +33,29 @@ import {
 type MessageType = {
   id: string;
   text?: string;
-  userId?: string; // ⬅️ siapa pengirimnya (UID)
-  userName?: string; // ⬅️ nama yg ditampilkan
+  userId?: string;
+  userName?: string;
   imageUrl?: string;
   createdAt?: { seconds: number; nanoseconds: number } | null;
+};
+
+const base64ToBlob = (base64: string, contentType = "") => {
+  const byteCharacters = atob(base64);
+  const byteArrays = [];
+
+  for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+    const slice = byteCharacters.slice(offset, offset + 512);
+    const byteNumbers = new Array(slice.length);
+
+    for (let i = 0; i < slice.length; i++) {
+      byteNumbers[i] = slice.charCodeAt(i);
+    }
+
+    const byteArray = new Uint8Array(byteNumbers);
+    byteArrays.push(byteArray);
+  }
+
+  return new Blob(byteArrays, { type: contentType });
 };
 
 const STORAGE_KEY = "CHAT_MESSAGES";
@@ -117,7 +135,8 @@ export default function Chat() {
     }
   };
 
-  const sendImage = async () => {
+ const sendImage = async () => {
+  try {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
       Alert.alert("Izin dibutuhkan", "Izin akses galeri diperlukan.");
@@ -127,33 +146,40 @@ export default function Chat() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.7,
+      base64: true,
     });
 
-    if (result.canceled || !result.assets || !result.assets[0].uri) return;
+    if (result.canceled) return;
 
-    try {
-      const asset = result.assets[0];
-      const response = await fetch(asset.uri);
-      const blob = await response.blob();
+    const asset = result.assets[0];
 
-      const filename = `images/${currentUid}_${Date.now()}.jpg`;
-      const imageRef = ref(storage, filename);
-
-      await uploadBytes(imageRef, blob);
-      const url = await getDownloadURL(imageRef);
-
-      await addDoc(messagesCollection, {
-        text: "",
-        imageUrl: url,
-        userId: currentUid,
-        userName: currentUserName,
-        createdAt: serverTimestamp(),
-      });
-    } catch (e) {
-      console.log("Failed to send image", e);
-      Alert.alert("Error", "Gagal mengirim gambar.");
+    if (!asset.base64) {
+      Alert.alert("Error", "Gambar gagal diambil.");
+      return;
     }
-  };
+
+    const blob = base64ToBlob(asset.base64, "image/jpeg");
+
+    const filename = `images/${currentUid}_${Date.now()}.jpg`;
+    const imageRef = ref(storage, filename);
+
+    await uploadBytes(imageRef, blob);
+
+    const url = await getDownloadURL(imageRef);
+
+    await addDoc(messagesCollection, {
+      text: "",
+      imageUrl: url,
+      userId: currentUid,
+      userName: currentUserName,
+      createdAt: serverTimestamp(),
+    });
+
+  } catch (e) {
+    console.log("FAILED UPLOAD IMAGE:", e);
+    Alert.alert("Error", "Gagal mengirim gambar.");
+  }
+};
 
   const handleLogout = async () => {
     try {
