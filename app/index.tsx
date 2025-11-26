@@ -36,11 +36,11 @@ export default function Index() {
                 <BrandAndText />
                 <View style={[styles.ctaRow, { marginTop: 24 }]}>
                   <FancyButton
-                    title="Get Started"
+                    title="Sign-In"
                     onPress={() => router.push("/login")}
                   />
                   <FancyButtonOutline
-                    title="Learn More"
+                    title="Sign-up"
                     onPress={() => router.push("/register")}
                   />
                 </View>
